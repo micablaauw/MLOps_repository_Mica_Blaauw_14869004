@@ -3,3 +3,4 @@ __pycache__/
 venv/
 my_venv/
 .env/
+slurm-*.out
