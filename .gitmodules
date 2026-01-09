@@ -1,0 +1,3 @@
+[submodule "MLOps_2026"]
+	path = MLOps_2026
+	url = https://github.com/SURF-ML/MLOps_2026.git
