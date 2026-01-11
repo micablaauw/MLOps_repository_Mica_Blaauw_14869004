@@ -4,3 +4,8 @@ venv/
 my_venv/
 .env/
 slurm-*.out
+data/
+*.pt
+*.h5
+experiments/logs/
+.DS_Store
