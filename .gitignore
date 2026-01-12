@@ -9,3 +9,4 @@ data/
 *.h5
 experiments/logs/
 .DS_Store
+.tar

@@ -44,13 +44,14 @@ def get_dataloaders(config: Dict) -> Tuple[DataLoader, DataLoader]:
     # TODO: Instantiate PCAMDataset for train and val
     train_dataset = PCAMDataset(x_train, y_train, transform=train_transform, filter_data=True)
     val_dataset = PCAMDataset(x_val, y_val, transform=val_transform, filter_data=False)
-    labels = train_dataset.y_data[:].squeeze()
-    class_counts = np.bincount(labels)
-    weights = 1.0 / class_counts
+    labels = train_dataset.y_data[train_dataset.indices].squeeze()
+
+    class_sample_count = np.bincount(labels)
+    weights = 1.0 / class_sample_count
     sample_weights = weights[labels]
 
     sampler = WeightedRandomSampler(
-        sample_weights,
+        weights=sample_weights,
         num_samples=len(sample_weights),
         replacement=True,
     )
