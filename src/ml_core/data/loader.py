@@ -1,11 +1,12 @@
 from pathlib import Path
 from typing import Dict, Tuple
 
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import transforms
 
 from .pcam import PCAMDataset
 
+import numpy as np
 
 def get_dataloaders(config: Dict) -> Tuple[DataLoader, DataLoader]:
     """
@@ -34,20 +35,22 @@ def get_dataloaders(config: Dict) -> Tuple[DataLoader, DataLoader]:
     )
 
     # TODO: Define Paths for X and Y (train and val)
-    x_train = base_path / "x_train.h5"
-    y_train = base_path / "y_train.h5"
-    x_val = base_path / "x_val.h5"
-    y_val = base_path / "y_val.h5"
+    x_train = base_path / "camelyonpatch_level_2_split_train_x.h5"
+    y_train = base_path / "camelyonpatch_level_2_split_train_y.h5"
+
+    x_val = base_path / "camelyonpatch_level_2_split_valid_x.h5"
+    y_val = base_path / "camelyonpatch_level_2_split_valid_y.h5"
+
     # TODO: Instantiate PCAMDataset for train and val
-    train_dataset = PCAMDataset(x_train, y_train, transform=train_transform)
-    val_dataset = PCAMDataset(x_val, y_val, transform=val_transform)
-    labels = np.array(train_dataset.y_data)
+    train_dataset = PCAMDataset(x_train, y_train, transform=train_transform, filter_data=True)
+    val_dataset = PCAMDataset(x_val, y_val, transform=val_transform, filter_data=False)
+    labels = train_dataset.y_data[:].squeeze()
     class_counts = np.bincount(labels)
-    class_weights = 1.0 / class_counts
-    sample_weights = class_weights[labels]
+    weights = 1.0 / class_counts
+    sample_weights = weights[labels]
 
     sampler = WeightedRandomSampler(
-        weights=sample_weights,
+        sample_weights,
         num_samples=len(sample_weights),
         replacement=True,
     )
@@ -57,7 +60,6 @@ def get_dataloaders(config: Dict) -> Tuple[DataLoader, DataLoader]:
         batch_size=batch_size,
         sampler=sampler,
         num_workers=num_workers,
-        pin_memory=True,
     )
 
     val_loader = DataLoader(
@@ -65,6 +67,5 @@ def get_dataloaders(config: Dict) -> Tuple[DataLoader, DataLoader]:
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        pin_memory=True,
     )
     return train_loader, val_loader

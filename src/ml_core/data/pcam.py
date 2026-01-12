@@ -12,10 +12,11 @@ class PCAMDataset(Dataset):
     PatchCamelyon (PCAM) Dataset reader for H5 format.
     """
 
-    def __init__(self, x_path: str, y_path: str, transform: Optional[Callable] = None):
+    def __init__(self, x_path: str, y_path: str, transform: Optional[Callable] = None, filter_data: bool = False):
         self.x_path = Path(x_path)
         self.y_path = Path(y_path)
         self.transform = transform
+        self.filter_data = filter_data
 
         if not self.x_path.exists():
             raise FileNotFoundError(f"X file not found: {self.x_path}")
@@ -27,10 +28,18 @@ class PCAMDataset(Dataset):
         self.x_data = self.x_file["x"]
         self.y_data = self.y_file["y"]
 
+        if self.filter_data:
+            means = self.x_data[:].mean(axis=(1, 2, 3))
+            self.indices = np.where(
+                (means > 5) & (means < 250)
+            )[0]
+        else:
+            self.indices = np.arange(len(self.x_data))
+
     def __len__(self) -> int:
         # TODO: Return length of dataset
         # The dataloader will know hence how many batches to create
-        return len(self.y_data)
+        return len(self.indices)
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         # TODO: Implement data retrieval
@@ -38,14 +47,18 @@ class PCAMDataset(Dataset):
         # 2. Convert to uint8 (for PIL compatibility if using transforms)
         # 3. Apply transforms if they exist
         # 4. Return tensor image and label (as long)
-        image = self.x_data[idx]
-        label = self.y_data[idx]
-        image = np.clip(image, 0, 255).astype(np.uint8)
-        if self.transform is not None:
-            image = self.transform(image)
+        real_idx = self.indices[idx]
+
+        x = self.x_data[real_idx]
+        y = self.y_data[real_idx]
+
+        x = np.clip(x, 0, 255).astype(np.uint8)
+
+        if self.transform:
+            x = self.transform(x)
         else:
-            image = torch.from_numpy(image).permute(2, 0, 1).float() / 255.0
+            x = torch.from_numpy(x).permute(2, 0, 1).float() / 255.0
 
-        label = torch.tensor(label, dtype=torch.long)
+        y = torch.tensor(y).long().squeeze()
 
-        return image, label
+        return x, y
